@@ -1,0 +1,47 @@
+# ----------------------------------
+# Copyright (c) 2021 Prashant K. Jha
+# ----------------------------------
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+version: 2
+jobs:
+  build:
+    docker:
+      - image: klakegg/hugo:0.87.0-ext-ubuntu
+    steps:
+      - run:
+          name: Avoid hosts unknown for github
+          command: |
+            mkdir -p /root/.ssh/ 
+            echo -e "Host github.com\n\tStrictHostKeyChecking no\n" > /root/.ssh/config
+            ssh-keyscan github.com >> /root/.ssh/known_hosts
+            #sudo ssh-keyscan github.com | tee -a /root/.ssh/known_hosts
+
+      - run:
+          name: "Run Hugo"
+          command: |
+            apt-get update
+            apt-get install -y git
+            # pull website repo
+            git clone git@github.com:prashjha/BME-313L-Fall2021-website.git
+            cd BME-313L-Fall2021-website
+            # update course repo
+            git submodule update --init BME-313L
+            cd BME-313L
+            git checkout main
+            git pull 
+            # build website
+            cd ..
+            # clean old files
+            rm -rf docs/*
+            # build
+            HUGO_ENV="production"  hugo -F
+            # commit to website repo
+            git config user.email "pjha.sci@gmail.com"
+            git config user.name "Prashant K. Jha"
+            git add .
+            git commit --allow-empty -m "update" 
+            # Push quietly to prevent showing the token in log
+            git push -q https://${G_TOKEN}@github.com/prashjha/BME-313L-Fall2021-website.git main
